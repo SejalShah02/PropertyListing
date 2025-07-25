@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Property Listing Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Custom styles */
+        .property-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .property-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+        .darken-overlay {
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+        .dark .darken-overlay {
+            background-color: rgba(0, 0, 0, 0.7);
+        }
+        .modal {
+            transition: opacity 0.3s ease, visibility  0.3s ease;
+        }
+        #map {
+            height: 300px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 transition-colors duration-300">
+    <div class="container mx-auto px-4 py-8">
+        <header class="flex justify-between items-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-800 dark:text-white">Property Finder</h1>
+            <button id="darkModeToggle" class="p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-yellow-300">
+                <i class="fas fa-moon"></i>
+            </button>
+        </header>
+
+        <div class="flex flex-col md:flex-row gap-6 mb-8">
+            <!-- Main Content -->
+            <div class="w-full md:w-2/3">
+                <!-- Search and Filters -->
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-6">
+                    <div class="flex flex-col md:flex-row gap-4">
+                        <div class="w-full md:w-3/4">
+                            <input type="text" id="searchInput" placeholder="Search by name or location..." 
+                                class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
+                        </div>
+                        <div class="w-full md:w-1/4">
+                            <select id="typeFilter" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
+                                <option value="all">All Types</option>
+                                <option value="House">House</option>
+                                <option value="Apartment">Apartment</option>
+                                <option value="Villa">Villa</option>
+                                <option value="Condo">Condo</option>
+                                <option value="Townhouse">Townhouse</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Property Listings -->
+                <div id="propertiesContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Properties will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Add Property Form -->
+            <div class="w-full md:w-1/3">
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 sticky top-4">
+                    <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Add New Property</h2>
+                    <form id="propertyForm">
+                        <div class="mb-4">
+                            <label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Property Name</label>
+                            <input type="text" id="name" required class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
+                        </div>
+                        <div class="mb-4">
+                            <label for="type" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Property Type</label>
+                            <select id="type" required class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
+                                <option value="">Select Type</option>
+                                <option value="House">House</option>
+                                <option value="Apartment">Apartment</option>
+                                <option value="Villa">Villa</option>
+                                <option value="Condo">Condo</option>
+                                <option value="Townhouse">Townhouse</option>
+                            </select>
+                        </div>
+                        <div class="mb-4">
+                            <label for="price" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Price ($)</label>
+                            <input type="number" id="price" required class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
+                        </div>
+                        <div class="mb-4">
+                            <label for="location" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Location</label>
+                            <input type="text" id="location" required class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
+                        </div>
+                        <div class="mb-4">
+                            <label for="description" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+                            <textarea id="description" required class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"></textarea>
+                        </div>
+                        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-300">
+                            Add Property
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Property Details Modal -->
+    <div id="propertyModal" class="modal fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 opacity-0 invisible transition-all duration-300">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl mx-4 my-8 max-h-[90vh] overflow-y-auto">
+            <div class="relative">
+                <div class="relative h-64 w-full overflow-hidden rounded-t-lg">
+                    <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/3e69032c-3a9a-43c0-ab58-d88e60676138.png" alt="Modern luxury property with floor-to-ceiling windows and contemporary interior design" class="w-full h-full object-cover" id="modalImage">
+                    <div class="absolute inset-0 darken-overlay"></div>
+                    <div class="absolute bottom-4 left-4">
+                        <h2 class="text-2xl font-bold text-white" id="modalTitle"></h2>
+                        <div class="flex items-center gap-2 mt-1">
+                            <span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded dark:bg-blue-900 dark:text-blue-200" id="modalType"></span>
+                            <span class="text-white text-sm" id="modalLocation"></span>
+                        </div>
+                    </div>
+                    <button id="closeModal" class="absolute top-4 right-4 bg-gray-800 bg-opacity-50 text-white rounded-full p-2 hover:bg-opacity-70 transition-colors duration-200">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-semibold text-gray-800 dark:text-white">Details</h3>
+                    <p class="text-2xl font-bold text-blue-600 dark:text-blue-400" id="modalPrice"></p>
+                </div>
+                <p class="text-gray-600 dark:text-gray-300 mb-6" id="modalDescription"></p>
+                <div class="mb-6">
+                    <h4 class="text-lg font-semibold text-gray-800 dark:text-white mb-2">Location</h4>
+                    <div id="map" class="rounded-lg overflow-hidden"></div>
+                </div>
+                <div class="flex justify-end">
+                    <button class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-300">
+                        <i class="fas fa-phone"></i> Contact Agent
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Dark Mode Toggle
+            const darkModeToggle = document.getElementById('darkModeToggle');
+            const body = document.body;
+            
+            // Check for saved dark mode preference or use system preference
+            const isDarkMode = localStorage.getItem('darkMode') === 'true' || 
+                              (!localStorage.getItem('darkMode') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            
+            if (isDarkMode) {
+                body.classList.add('dark');
+                darkModeToggle.innerHTML = '<i class="fas fa-sun"></i>';
+            }
+            
+            darkModeToggle.addEventListener('click', () => {
+                body.classList.toggle('dark');
+                const isDark = body.classList.contains('dark');
+                localStorage.setItem('darkMode', isDark);
+                darkModeToggle.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+            });
+            
+            // Mock API for properties
+            const mockProperties = [
+                {
+                    id: 1,
+                    name: "Luxury Villa",
+                    type: "Villa",
+                    price: 1200000,
+                    location: "Miami, FL",
+                    description: "Stunning luxury villa with private pool, ocean view, and modern appliances. Features 5 bedrooms, 4.5 baths, and a spacious living area.",
+                    image: "https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/410fbc95-6192-4763-b80d-ac2b8bd44a4e.png",
+                    coords: { lat: 25.7617, lng: -80.1918 }
+                },
+                {
+                    id: 2,
+                    name: "Downtown Apartment",
+                    type: "Apartment",
+                    price: 450000,
+                    location: "New York, NY",
+                    description: "Modern apartment in the heart of downtown. Close to public transport, shopping, and entertainment. Includes gym access and 24/7 security.",
+                    image: "https://placehold.co/600x400",
+                    coords: { lat: 40.7128, lng: -74.0060 }
+                },
+                {
+                    id: 3,
+                    name: "Suburban House",
+                    type: "House",
+                    price: 320000,
+                    location: "Austin, TX",
+                    description: "Family-friendly home in quiet neighborhood. Features 3 bedrooms, 2 baths, large backyard, and updated kitchen. Great schools nearby.",
+                    image: "https://placehold.co/600x400",
+                    coords: { lat: 30.2672, lng: -97.7431 }
+                },
+                {
+                    id: 4,
+                    name: "Beach Condo",
+                    type: "Condo",
+                    price: 680000,
+                    location: "San Diego, CA",
+                    description: "Beautiful beachfront condo with stunning views. Community amenities include pool, gym, and private beach access.",
+                    image: "https://placehold.co/600x400",
+                    coords: { lat: 32.7157, lng: -117.1611 }
+                },
+                {
+                    id: 5,
+                    name: "Urban Townhouse",
+                    type: "Townhouse",
+                    price: 550000,
+                    location: "Chicago, IL",
+                    description: "Charming townhouse in vibrant neighborhood. Modern interior with loft-style living space and roof deck with city views.",
+                    image: "https://placehold.co/600x400",
+                    coords: { lat: 41.8781, lng: -87.6298 }
+                }
+            ];
+            
+            // Load properties from localStorage or use mock data
+            let properties = JSON.parse(localStorage.getItem('properties')) || mockProperties;
+            
+            // DOM elements
+            const propertiesContainer = document.getElementById('propertiesContainer');
+            const propertyForm = document.getElementById('propertyForm');
+            const searchInput = document.getElementById('searchInput');
+            const typeFilter = document.getElementById('typeFilter');
+            const modal = document.getElementById('propertyModal');
+            const closeModal = document.getElementById('closeModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalType = document.getElementById('modalType');
+            const modalLocation = document.getElementById('modalLocation');
+            const modalPrice = document.getElementById('modalPrice');
+            const modalDescription = document.getElementById('modalDescription');
+            const modalImage = document.getElementById('modalImage');
+            const mapElement = document.getElementById('map');
+            
+            // Load Google Maps API
+            function loadGoogleMaps() {
+                const script = document.createElement('script');
+                script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyCkUOdZ5y7hMm0yrcCQoCvLwzdM6M8s5qk&callback=initMap`;
+                script.defer = true;
+                script.async = true;
+                document.body.appendChild(script);
+            }
+            
+            window.initMap = function() {
+                // Actual map initialization happens in showModal
+            };
+            
+            loadGoogleMaps();
+            
+            // Render properties
+            function renderProperties(propertiesToRender) {
+                propertiesContainer.innerHTML = '';
+                
+                if (propertiesToRender.length === 0) {
+                    propertiesContainer.innerHTML = `
+                        <div class="col-span-full text-center py-12">
+                            <i class="fas fa-home text-4xl text-gray-400 mb-4"></i>
+                            <p class="text-xl text-gray-600 dark:text-gray-300">No properties found matching your criteria</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                propertiesToRender.forEach(property => {
+                    const propertyCard = document.createElement('div');
+                    propertyCard.className = 'property-card bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden';
+                    propertyCard.innerHTML = `
+                        <div class="relative h-48 overflow-hidden">
+                            <img src="${property.image}" alt="${property.type} in ${property.location} - ${property.description.substring(0, 80)}..." class="w-full h-full object-cover">
+                            <div class="absolute inset-0 darken-overlay"></div>
+                            <span class="absolute top-3 right-3 bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded font-medium dark:bg-blue-900 dark:text-blue-200">${property.type}</span>
+                            <span class="absolute bottom-3 left-3 text-white font-bold text-xl">$${property.price.toLocaleString()}</span>
+                        </div>
+                        <div class="p-4">
+                            <h3 class="font-semibold text-lg text-gray-800 dark:text-white mb-1">${property.name}</h3>
+                            <p class="text-gray-600 dark:text-gray-400 text-sm mb-2 flex items-center">
+                                <i class="fas fa-map-marker-alt mr-1"></i> ${property.location}
+                            </p>
+                            <p class="text-gray-700 dark:text-gray-300 text-sm mb0-4 line-clamp-2">${property.description}</p>
+                            <button class="property-view-btn mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded transition-colors duration-300" data-id="${property.id}">
+                                View Details
+                            </button>
+                        </div>
+                    `;
+                    propertiesContainer.appendChild(propertyCard);
+                });
+                
+                // Add event listeners to view buttons
+                document.querySelectorAll('.property-view-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const propertyId = parseInt(this.getAttribute('data-id'));
+                        showModal(propertyId);
+                    });
+                });
+            }
+            
+            // Filter and search properties
+            function filterProperties() {
+                const searchTerm = searchInput.value.toLowerCase();
+                const typeValue = typeFilter.value;
+                
+                let filtered = properties.filter(property => {
+                    const matchesSearch = property.name.toLowerCase().includes(searchTerm) || 
+                                         property.location.toLowerCase().includes(searchTerm) || 
+                                         property.description.toLowerCase().includes(searchTerm);
+                    
+                    const matchesType = typeValue === 'all' || property.type === typeValue;
+                    
+                    return matchesSearch && matchesType;
+                });
+                
+                renderProperties(filtered);
+            }
+            
+            // Show modal with property details
+            function showModal(propertyId) {
+                const property = properties.find(p => p.id === propertyId);
+                if (!property) return;
+                
+                modalTitle.textContent = property.name;
+                modalType.textContent = property.type;
+                modalLocation.textContent = property.location;
+                modalPrice.textContent = `$${property.price.toLocaleString()}`;
+                modalDescription.textContent = property.description;
+                modalImage.src = property.image;
+                modalImage.alt = `${property.type} in ${property.location} - ${property.description.substring(0, 120)}`;
+                
+                // Initialize map if available
+                if (typeof google !== 'undefined') {
+                    const map = new google.maps.Map(mapElement, {
+                        center: property.coords,
+                        zoom: 14,
+                        styles: body.classList.contains('dark') ? [
+                            {elementType: "geometry", stylers: [{color: "#242424"}]},
+                            {elementType: "labels.text.stroke", stylers: [{color: "#242424"}]},
+                            {elementType: "labels.text.fill", stylers: [{color: "#ffffff"}]}
+                        ] : []
+                    });
+                    
+                    new google.maps.Marker({
+                        position: property.coords,
+                        map: map,
+                        title: property.name
+                    });
+                } else {
+                    mapElement.innerHTML = '<div class="bg-gray-100 dark:bg-gray-700 h-full flex items-center justify-center text-gray-500 dark:text-gray-400">Google Maps failed to load</div>';
+                }
+                
+                modal.classList.remove('opacity-0', 'invisible');
+                modal.classList.add('opacity-100', 'visible');
+                document.body.style.overflow = 'hidden';
+            }
+            
+            // Close modal
+            function closeModalHandler() {
+                modal.classList.remove('opacity-100', 'visible');
+                modal.classList.add('opacity-0', 'invisible');
+                document.body.style.overflow = 'auto';
+                mapElement.innerHTML = ''; // Clear map
+            }
+            
+            // Add new property
+            propertyForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const newProperty = {
+                    id: Date.now(),
+                    name: document.getElementById('name').value,
+                    type: document.getElementById('type').value,
+                    price: parseInt(document.getElementById('price').value),
+                    location: document.getElementById('location').value,
+                    description: document.getElementById('description').value,
+                    image: "https://placehold.co/600x400",
+                    coords: { lat: 34.0522 + (Math.random() * 0.1 - 0.05), lng: -118.2437 + (Math.random() * 0.1 - 0.05) }
+                };
+                
+                properties.unshift(newProperty);
+                localStorage.setItem('properties', JSON.stringify(properties));
+                
+                this.reset();
+                filterProperties();
+                
+                // Show success message
+                const successMsg = document.createElement('div');
+                successMsg.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 animate-fade-in';
+                successMsg.innerHTML = `
+                    <i class="fas fa-check-circle"></i>
+                    Property added successfully!
+                `;
+                document.body.appendChild(successMsg);
+                
+                setTimeout(() => {
+                    successMsg.classList.add('animate-fade-out');
+                    setTimeout(() => successMsg.remove(), 300);
+                }, 3000);
+            });
+            
+            // Event listeners
+            searchInput.addEventListener('input', filterProperties);
+            typeFilter.addEventListener('change', filterProperties);
+            closeModal.addEventListener('click', closeModalHandler);
+            
+            // Close modal when clicking outside
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    closeModalHandler();
+                }
+            });
+            
+            // Initial render
+            renderProperties(properties);
+            
+            // Add animation effects
+            const animateFadeIn = `
+                @keyframes fade-in {
+                    from { opacity: 0; transform: translateY(20px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+                .animate-fade-in {
+                    animation: fade-in 0.5s ease-out forwards;
+                }
+            `;
+            
+            const animateFadeOut = `
+                @keyframes fade-out {
+                    from { opacity: 1; transform: translateY(0); }
+                    to { opacity: 0; transform: translateY(20px); }
+                }
+                .animate-fade-out {
+                    animation: fade-out 0.3s ease-in forwards;
+                }
+            `;
+            
+            const style = document.createElement('style');
+            style.textContent = animateFadeIn + animateFadeOut;
+            document.head.appendChild(style);
+        });
+    </script>
+</body>
+</html>
+
